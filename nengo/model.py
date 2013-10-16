@@ -66,7 +66,8 @@ class Model(object):
         self.connections = []
         self.signal_probes = []
 
-        self.name = name + ''  # -- make self.name a string, raise error otw
+        assert isinstance(name, str), "'name' must be a string"
+        self.name = name
         self.seed = seed
 
         self._rng = None
@@ -204,6 +205,8 @@ class Model(object):
         """
         if isinstance(target, str):
             return self.objs.get(target, default)
+        elif hasattr(self, 'memo') and id(target) in self.memo:
+            return self.memo[id(target)]
         return target
 
     def get_string(self, target, default=None):
@@ -484,12 +487,12 @@ class Model(object):
         Probe
         """
         if isinstance(target, str):
-            obj = self.get(target, "NotFound")
-            if obj == "NotFound" and '.' in target:
+            obj = self.get(target)
+            if obj is None and '.' in target:
                 name, probe_name = target.rsplit('.', 1)
                 obj = self.get(name)
                 p = obj.probe(probe_name, sample_every, filter)
-            elif obj == "NotFound":
+            elif obj is None:
                 raise ValueError(str(target) + " cannot be found.")
             else:
                 p = obj.probe(sample_every=sample_every, filter=filter)
