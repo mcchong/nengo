@@ -400,7 +400,7 @@ class DecodedConnection(Connection):
 
         self.decoders = kwargs.get('decoders', None)
         self.decoder_solver = kwargs.get('decoder_solver',
-                                         decoders.least_squares)
+                                         decoders.lstsq_noisy)
         self.eval_points = kwargs.get('eval_points', None)
         self.function = kwargs.get('function', None)
 

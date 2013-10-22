@@ -963,6 +963,8 @@ class Builder(object):
             conn.signal = Signal(np.zeros(conn.dimensions), name=conn.name)
 
             # Set up decoders
+            seed = self.model._get_new_seed()
+            rng = np.random.RandomState(seed)
             if conn._decoders is None:
                 activities = conn.pre.activities(conn.eval_points) * dt
                 if conn.function is None:
@@ -972,7 +974,7 @@ class Builder(object):
                         [conn.function(ep) for ep in conn.eval_points])
                     if len(targets.shape) < 2:
                         targets.shape = targets.shape[0], 1
-                conn._decoders = conn.decoder_solver(activities, targets)
+                conn._decoders = conn.decoder_solver(activities, targets, rng)
 
             # Set up filter
             if conn.filter is not None and conn.filter > dt:
