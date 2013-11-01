@@ -80,40 +80,49 @@ def lstsq(activities, targets, rng):
     return weights.T
 
 def lstsq_noisy(activities, targets, rng):
-    sigma = activities.max() * 0.1
+    sigma = 0.1 * activities.max()
     noise = rng.normal(scale=sigma, size=activities.shape)
-    activities = activities + noise
+    noisy_acts = activities + noise
     weights, res, rank, s = np.linalg.lstsq(
-        activities, targets, rcond=DEFAULT_RCOND)
+        noisy_acts, targets, rcond=DEFAULT_RCOND)
     return weights.T
 
-def lstsq_noisy_clip(activities, targets, rng):
-    sigma = activities.max() * 0.1
+def lstsq_noisy_zero(activities, targets, rng):
+    sigma = 0.1 * activities.max()
     noise = rng.normal(scale=sigma, size=activities.shape)
-    activities = (activities + noise).clip(0, np.inf)
+    noise[activities == 0] = 0
+    noisy_acts = activities + noise
     weights, res, rank, s = np.linalg.lstsq(
-        activities, targets, rcond=DEFAULT_RCOND)
+        noisy_acts, targets, rcond=DEFAULT_RCOND)
+    return weights.T
+
+def lstsq_noisy_zeroclip(activities, targets, rng):
+    sigma = 0.1 * activities.max()
+    noise = rng.normal(scale=sigma, size=activities.shape)
+    noise[activities == 0] = 0
+    noisy_acts = activities + noise
+    noisy_acts[noisy_acts < 0] = 0
+    weights, res, rank, s = np.linalg.lstsq(
+        noisy_acts, targets, rcond=DEFAULT_RCOND)
     return weights.T
 
 def lstsq_noisy_perneuron(activities, targets, rng):
-    sigma = activities.max(0) * 0.1
+    sigma = 0.1 * activities.max(0)
     noise = rng.normal(size=activities.shape) * sigma
     activities = activities + noise
     weights, res, rank, s = np.linalg.lstsq(
         activities, targets, rcond=DEFAULT_RCOND)
     return weights.T
 
-def direct_L2(activities, targets, rng):
-    sigma = activities.max() * 0.1
-    # return _eigh(activities, targets, sigma).T
-    return _cholesky(activities, targets, sigma).T
-    # return _svd(activities, targets, sigma).T
-
-def direct_L2_check(activities, targets, rng):
+def _direct_L2_check(activities, targets, rng):
+    """Helper for testing and timing direct-L2 methods"""
     import time
     sigma = activities.mean() * 0.1
 
-    solvers = [_cholesky, _eigh, _svd]
+    if HAS_SCIPY:
+        solvers = [_cholesky, _eigh, _svd]
+    else:
+        solvers = [__eigh, _svd]
 
     ref_weights = None
     for solver in solvers:
@@ -127,85 +136,87 @@ def direct_L2_check(activities, targets, rng):
             assert np.allclose(ref_weights, weights)
     return weights.T
 
+def direct_L2(activities, targets, rng):
+    sigma = 0.1 * activities.max()
+    return _cholesky(activities, targets, sigma).T
+
 def direct_L2_low(activities, targets, rng):
     sigma = activities.mean() * 0.1
-    return _eigh(activities, targets, sigma).T
+    return _cholesky(activities, targets, sigma).T
 
 def direct_L2_perneuron(activities, targets, rng):
-    sigma = activities.max(0) * 0.1
-    return _cholesky_np(activities, targets, sigma).T
+    # sigma = 0.1 * activities.max(0)
+    sigma = (0.1 * activities.max(0)) * np.sqrt((activities > 0).mean(0))
+    sigma[sigma == 0] = 1  # some neurons may have zero activation
+    return _cholesky1(activities, targets, sigma).T
+
+def direct_L2_zero(activities, targets, rng):
+    sigma = (0.1 * activities.max()) * np.sqrt((activities > 0).mean(0))
+    sigma[sigma == 0] = 1  # some neurons may have zero activation
+    return _cholesky1(activities, targets, sigma).T
 
 def _dropout_mask(shape, drop_rate, rng):
-    m, n = shape
-    drop_n = int(drop_rate * n)
+    if 0:
+        ### create mask to have same sum across all rows and columns
+        m, n = shape
+        drop_n = int(drop_rate * n)
 
-    mask = np.ones(shape, dtype='bool')
-    row_inds = np.arange(n)
-    col_count = np.zeros(n, dtype='int32')
-    for row in mask:
-        p = (col_count.max() - col_count) + 1e-3
-        inds = rng.choice(row_inds, size=drop_n, replace=False, p=p/p.sum())
-        row[inds] = 0
-        col_count[inds] += 1
+        mask = np.ones(shape, dtype='bool')
+        row_inds = np.arange(n)
+        col_count = np.zeros(n, dtype='int32')
+        for row in mask:
+            p = (col_count.max() - col_count) + 1e-3
+            inds = rng.choice(row_inds, size=drop_n, replace=False, p=p/p.sum())
+            row[inds] = 0
+            col_count[inds] += 1
+    else:
+        ### create mask to have right drop statistics
+        mask = np.random.uniform(size=shape) > drop_rate
 
     return mask
 
 def dropout(activities, targets, rng):
-    activ_sum = activities.sum(0)
-    # mask = rng.normal(size=activities.shape) > 2
-    # activities[mask] = 0
+    """Use dropout to help with regularization, by randomly dropping a
+    fraction of neurons from each sample point."""
+    activ_sum1 = activities.sum(0)
+    activ_sum1[activ_sum1 == 0] = 1  # some neurons may have zero activation
 
-    if 0:
-        skip = 2
-        drop_rate = 1. / skip
+    drop_rate = 0.1
+    mask = _dropout_mask(activities.shape, drop_rate, rng)
+    masked_acts = activities * mask
 
-        mask = np.ones(activities.shape, dtype='bool')
-        j = 0
-        for row in mask:
-            row[j::skip] = 0
-            j = np.mod(j + 1, skip)
-    else:
-        drop_rate = 0.1
-        mask = _dropout_mask(activities.shape, drop_rate, rng)
-
-    activities = activities * mask
-    # weights, res, rank, s = np.linalg.lstsq(
-    #     activities, targets, rcond=DEFAULT_RCOND)
-    weights = _cholesky_np(activities, targets, 0.1*activities.max(0))
+    sigma = 0.05 * masked_acts.max()
+    # sigma = (0.05 * masked_acts.max()) * np.sqrt((masked_acts > 0).mean(0))
+    # sigma[sigma == 0] = 1
+    weights = _cholesky1(masked_acts, targets, sigma)
 
     # weights = weights * (1 - drop_rate)
-
-    activ_sum2 = activities.sum(0)
-    weights = weights * (activ_sum2 / activ_sum)[:,None]
+    activ_sum2 = masked_acts.sum(0)
+    weights = weights * (activ_sum2 / activ_sum1)[:,None]
 
     return weights.T
 
 def dropout_avg(activities, targets, rng):
-    drop_rate = 0.25
+    """Average across multiple sets of weights found using dropout."""
+    activ_sum1 = activities.sum(0)
+    activ_sum1[activ_sum1 == 0] = 1  # some neurons may have zero activation
+
+    drop_rate = 0.1
     x = []
     for i in xrange(5):
         mask = _dropout_mask(activities.shape, drop_rate, rng)
         masked_acts = activities * mask
-        weights, res, rank, s = np.linalg.lstsq(
-            masked_acts, targets, rcond=DEFAULT_RCOND)
-        weights = weights * (1 - drop_rate)
+
+        sigma = 0.05 * masked_acts.max()
+        # sigma = (0.05 * masked_acts.max()) * np.sqrt((masked_acts > 0).mean(0))
+        # sigma[sigma == 0] = 1
+        weights = _cholesky1(masked_acts, targets, sigma)
+
+        # weights = weights * (1 - drop_rate)
+        activ_sum2 = masked_acts.sum(0)
+        weights = weights * (activ_sum2 / activ_sum1)[:,None]
+
         x.append(weights)
-
-    # skip = 4
-    # drop_rate = 1. / skip
-    # x = []
-    # for i in xrange(skip):
-    #     mask = np.ones(activities.shape, dtype='bool')
-    #     j = i
-    #     for row in mask:
-    #         row[j::skip] = 0
-    #         j = np.mod(j + 1, skip)
-
-    #     masked_acts = activities * mask
-    #     weights, res, rank, s = np.linalg.lstsq(
-    #         masked_acts, targets, rcond=DEFAULT_RCOND)
-    #     weights = weights * (1 - drop_rate)
-    #     x.append(weights)
 
     return np.asarray(x).mean(0).T
 
@@ -242,7 +253,7 @@ def _eigh(A, b, sigma):
 
     return x
 
-def _cholesky_sp(A, b, sigma):
+def _cholesky(A, b, sigma):
     """
     Solve the given linear system(s) using the Cholesky decomposition
     """
@@ -272,7 +283,7 @@ def _cholesky_sp(A, b, sigma):
         x = np.dot(A.T, x)
     return x
 
-def _cholesky_np(A, b, sigma):
+def _cholesky1(A, b, sigma):
     """
     Solve the given linear system(s) using the Cholesky decomposition
     """
@@ -282,12 +293,11 @@ def _cholesky_np(A, b, sigma):
     np.fill_diagonal(G, G.diagonal() + reglambda)
     b = np.dot(A.T, b)
 
-    L = np.linalg.cholesky(G)
-    L = np.linalg.inv(L.T)
-    return np.dot(L, np.dot(L.T, b))
-
-
-_cholesky = _cholesky_sp if HAS_SCIPY else _cholesky_np
+    # L = np.linalg.cholesky(G)
+    # L = np.linalg.inv(L.T)
+    # return np.dot(L, np.dot(L.T, b))
+    factor = sp.linalg.cho_factor(G, overwrite_a=True, check_finite=False)
+    return sp.linalg.cho_solve(factor, b, check_finite=False)
 
 
 def _svd(A, b, sigma):
@@ -363,3 +373,14 @@ def _svd(A, b, sigma):
 #         return x.ravel(), itns[0]
 #     else:
 #         return x, itns
+
+
+if not HAS_SCIPY:
+    del _cholesky
+    del _cholesky1
+    del direct_L2
+    del direct_L2_low
+    del direct_L2_perneuron
+    del direct_L2_zero
+    del dropout
+    del dropout_avg
