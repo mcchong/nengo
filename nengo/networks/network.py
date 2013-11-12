@@ -1,4 +1,5 @@
 from .. import objects
+from .. import templates
 
 class Network(object):
     def __init__(self, name, *args, **kwargs):
@@ -17,3 +18,12 @@ class Network(object):
         for obj in self.objects:
             obj.name = self.name + '.' +  obj.name
             model.add(obj)
+
+    def connect(self, o1, o2, **kwargs):
+        o1.connect_to(o2, **kwargs)
+    
+    def ensemble_array(self, *args, **kwargs):
+        return self.add(templates.EnsembleArray(*args, **kwargs))
+    
+    def passthrough(self, *args, **kwargs):
+        return self.add(objects.PassthroughNode(*args, **kwargs))
