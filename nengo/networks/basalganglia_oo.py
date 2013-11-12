@@ -52,11 +52,11 @@ class BasalGanglia(Network):
         self.output = self.passthrough("output", dimensions=dimensions)
 
         # spread the input to StrD1, StrD2, and STN
-        self.connect(input, strD1, filter=None,
+        self.connect(self.input, strD1, filter=None,
             transform=np.eye(dimensions) * self.ws * (1 + self.lg))
-        self.connect(input, strD2, filter=None,
+        self.connect(self.input, strD2, filter=None,
             transform=np.eye(dimensions) * self.ws * (1 - self.le))
-        self.connect(input, stn, filter=None,
+        self.connect(self.input, stn, filter=None,
             transform=np.eye(dimensions) * self.wt)
 
         # connect the striatum to the GPi and GPe (inhibitory)
