@@ -184,7 +184,7 @@ class Ensemble(object):
             post.connections_in.append(connection)
         return connection
 
-    def probe(self, to_probe='decoded_output', sample_every=0.001, filter=0.01):
+    def probe(self, **kwargs):
         """Probe a signal in this ensemble.
 
         Parameters
@@ -201,16 +201,20 @@ class Ensemble(object):
         probe : Probe
             The new Probe object.
         """
+        to_probe = kwargs.pop('to_probe','decoded_output') 
+        sample_every = kwargs.pop('sample_every', 0.001)
+        filter = kwargs.pop('filter', 0.01)
+
         if to_probe == 'decoded_output':
             probe = Probe(self.name + '.decoded_output', sample_every)
-            self.connect_to(probe, filter=filter)
+            self.connect_to(probe, filter=filter, **kwargs)
             self.probes['decoded_output'].append(probe)
 
         elif to_probe == 'spikes':
             probe = Probe(self.name + '.spikes', sample_every)
             connection = Connection(
                 self.neurons, probe, filter=filter,
-                transform=np.eye(self.n_neurons))
+                transform=np.eye(self.n_neurons), **kwargs)
             self.connections_out.append(connection)
             if hasattr(probe, 'connections_in'):
                 probe.connections_in.append(connection)
@@ -219,7 +223,7 @@ class Ensemble(object):
         elif to_probe == 'voltages':
             probe = Probe(self.name + '.voltages', sample_every, self.n_neurons)
             connection = Connection(
-                self.neurons.voltage, probe, filter=None)
+                self.neurons.voltage, probe, filter=None, **kwargs)
             self.connections_out.append(connection)
             if hasattr(probe, 'connections_in'):
                 probe.connections_in.append(connection)
@@ -521,7 +525,7 @@ class Probe(object):
         List of incoming connections.
     sample_rate
     """
-    def __init__(self, name, sample_every, dimensions=None):
+    def __init__(self, name, sample_every, dimensions=None, maxlen=None):
         self.name = "Probe(" + name + ")"
         self.sample_every = sample_every
         self.dimensions = dimensions ##None?

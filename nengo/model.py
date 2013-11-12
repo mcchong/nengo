@@ -436,7 +436,7 @@ class Model(object):
         post = self.get(post)
         return pre.connect_to(post, **kwargs)
 
-    def probe(self, target, sample_every=0.001, filter=None):
+    def probe(self, target, **kwargs):
         """Probe a piece of data contained in the model.
 
         When a piece of data is probed, it will be recorded through
@@ -488,13 +488,13 @@ class Model(object):
             if obj == "NotFound" and '.' in target:
                 name, probe_name = target.rsplit('.', 1)
                 obj = self.get(name)
-                p = obj.probe(probe_name, sample_every, filter)
+                p = obj.probe(probe_name, **kwargs)
             elif obj == "NotFound":
                 raise ValueError(str(target) + " cannot be found.")
             else:
-                p = obj.probe(sample_every=sample_every, filter=filter)
+                p = obj.probe(**kwargs)
         elif hasattr(target, 'probe'):
-            p = target.probe(sample_every=sample_every, filter=filter)
+            p = target.probe(**kwargs)
         else:
             raise TypeError("Type " + target.__class__.__name__ + " "
                             "has no probe function.")
