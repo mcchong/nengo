@@ -900,7 +900,10 @@ class Builder(object):
     @builds(objects.Connection)
     def build_connection(self, conn):
         conn.input_signal = conn.pre.output_signal
-        conn.output_signal = conn.post.input_signal
+        try:
+            conn.output_signal = conn.post.input_signal
+        except:
+            import q; q.d()
         if conn.modulatory:
             # Make a new signal, effectively detaching from post
             conn.output_signal = Signal(np.zeros(conn.dimensions),
