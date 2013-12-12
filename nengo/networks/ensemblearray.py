@@ -6,7 +6,7 @@ import nengo
 
 
 class EnsembleArray(nengo.Network):
-    def make(self, neurons, n_ensembles, dimensions_per_ensemble=1, **ens_args):
+    def make(self, neurons, n_ensembles, dimensions_per_ensemble=1, **ensargs):
         self.n_ensembles = n_ensembles
         self.dimensions_per_ensemble = dimensions_per_ensemble
         self.ensembles = []
@@ -25,7 +25,8 @@ class EnsembleArray(nengo.Network):
                 else:
                     ens_neurons.n_neurons = each_neurons
 
-                e = nengo.Ensemble(ens_neurons, dimensions_per_ensemble)
+                e = nengo.Ensemble(ens_neurons, dimensions_per_ensemble,
+                                   **ensargs)
                 trans = transform[i * dimensions_per_ensemble:
                                   (i + 1) * dimensions_per_ensemble, :]
                 nengo.Connection(self.input, e, transform=trans, filter=None)

@@ -89,6 +89,7 @@ def test_multidim(Simulator, nl):
     assert np.allclose(b, b_sim, atol=atol, rtol=rtol)
     assert np.allclose(c, c_sim, atol=atol, rtol=rtol)
 
+
 def test_matrix_mul(Simulator, nl):
     N = 100
 
