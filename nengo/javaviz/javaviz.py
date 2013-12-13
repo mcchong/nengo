@@ -39,17 +39,17 @@ class View:
         for obj in model.objs[:]:
             if isinstance(obj, nengo.Ensemble):
                 if control_ensemble is None:
-                    e = self.rpyc.modules.timeview.javaviz.ControlEnsemble(vr, id(obj), obj)
+                    e = self.rpyc.modules.timeview.javaviz.ControlEnsemble(vr, id(obj)&0xFFFF, obj)
                     e.init_control('localhost', udp_port+attempts+1)
                     control_ensemble = e
                 else:    
-                    e = self.rpyc.modules.timeview.javaviz.Ensemble(vr, id(obj), obj)
+                    e = self.rpyc.modules.timeview.javaviz.Ensemble(vr, id(obj)&0xFFFF, obj)
                 net.add(e)
                 remote_objs[obj] = e
                 
                 
                 with model:                      
-                    def send(t, x, self=self, format='>Lf'+'f'*obj.dimensions, id=id(obj)):
+                    def send(t, x, self=self, format='>Lf'+'f'*obj.dimensions, id=id(obj)&0xFFFF):
                         msg = struct.pack(format, id, t, *x)
                         self.socket.sendto(msg, self.socket_target)
                     
@@ -68,13 +68,13 @@ class View:
                         output_dims = len(output)
                     obj._output_dims = output_dims    
                     input = net.make_input(obj.label, tuple([0]*output_dims))
-                    obj.output = OverrideFunction(obj.output, id(input))
-                    print 'make override', id(input)
+                    obj.output = OverrideFunction(obj.output, id(input)&0xFFFF)
+                    print 'make override', id(input)&0xFFFF
                     remote_objs[obj] = input
                     inputs.append(input)
                     
         for input in inputs:
-            control_ensemble.register(id(input), input)
+            control_ensemble.register(id(input)&0xFFFF, input)
                     
         for c in model.connections:
             if c not in ignore_connections:
