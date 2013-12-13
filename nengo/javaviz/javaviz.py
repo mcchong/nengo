@@ -69,7 +69,6 @@ class View:
                     obj._output_dims = output_dims    
                     input = net.make_input(obj.label, tuple([0]*output_dims))
                     obj.output = OverrideFunction(obj.output, id(input)&0xFFFF)
-                    print 'make override', id(input)&0xFFFF
                     remote_objs[obj] = input
                     inputs.append(input)
                     
@@ -95,10 +94,9 @@ class View:
         while True:
             msg = self.socket_recv.recv(4096)
             time = struct.unpack('>f', msg[:4])
-            OverrideFunction.overrides['block_time'] = time
+            OverrideFunction.overrides['block_time'] = time[0]
             for i in range((len(msg)-4)/12):
                 id, index, value = struct.unpack('>LLf', msg[4+i*12:16+i*12])
-                print '  changed', id, index, value
                 OverrideFunction.overrides[id][index]=value
             
 class OverrideFunction(object):
