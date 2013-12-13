@@ -68,7 +68,6 @@ class ControlEnsemble(Ensemble):
         while True:
             if self.view is not None:
                 msg = struct.pack('>f', self.t)
-                print 'send time', self.t
                 for key, value in self.view.forced_origins.items():
                     (name, origin, index) = key
                     if origin=='origin':
@@ -77,7 +76,6 @@ class ControlEnsemble(Ensemble):
                             prev = cache.get((id,index),None)
                             if value != prev:
                                 msg += struct.pack('>LLf', id, index, value)
-                                print '  ', id, index, value
                                 cache[(id, index)] = value
                 packet = java.net.DatagramPacket(msg, len(msg), self.address, self.port)
                 self.socket.send(packet)
