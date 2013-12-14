@@ -1,3 +1,4 @@
+matplotlib
 IPython
 pytest
 pytest-pep8
