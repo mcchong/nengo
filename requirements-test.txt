@@ -1,5 +1,5 @@
 matplotlib
 IPython
 pytest
-pytest-pep8
+pytest-xdist
 pyzmq
