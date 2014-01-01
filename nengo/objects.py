@@ -287,7 +287,7 @@ class Connection(object):
         self.filter = filter
         self.transform = transform
         self.modulatory = modulatory
-        self.learning_rule = kwargs.get('learning_rule', None)
+        self.learning_rule = kwargs.pop('learning_rule', None)
 
         if isinstance(self.pre, Ensemble):
             self.decoders = kwargs.pop('decoders', None)

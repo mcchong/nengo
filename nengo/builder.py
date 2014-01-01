@@ -702,8 +702,10 @@ class SimPES(Operator):
         self.activities = activities
         self.learning_rate = learning_rate
 
-        self.read = [error, activities]
+        self.reads = [error, activities]
         self.updates = [output]
+        self.sets = []
+        self.incs = []
 
     def make_step(self, dct, dt):
         output = dct[self.output]
@@ -794,11 +796,13 @@ class Builder(object):
         # 3. Then connections
         logger.info("Building connections")
         learning_rules = []
-        for o in self.model.objs.values():
-            for c in o.connections_out:
-                self._builders[c.__class__](c)
-                if c.learning_rule is not None:
-                    learning_rules.append(c.learning_rule)
+
+#        for o in self.model.objs:
+#            for c in o.connections_out:
+#                self._builders[c.__class__](c)
+#                if c.learning_rule is not None:
+#                    learning_rules.append(c.learning_rule)
+
         for c in self.model.connections:
             self._builders[c.__class__](c)
             if c.learning_rule is not None:
@@ -971,30 +975,13 @@ class Builder(object):
             input_signal, Signal(1.0), pyfunc.input_signal))
         return pyfunc
 
-<<<<<<< HEAD
     @builds(nengo.Connection)
     def build_connection(self, conn):
         rng = np.random.RandomState(self.model._get_new_seed())
-=======
-        # Set up probes
-        for probe in conn.probes['signal']:
-            probe.dimensions = conn.output_signal.size
-            self.model.add(probe)
->>>>>>> WIP: PES learning rule on decoders
 
         conn.input_signal = conn.pre.output_signal
         conn.output_signal = conn.post.input_signal
-<<<<<<< HEAD
-=======
-        if conn.modulatory:
-            # Make a new signal, effectively detaching from post,
-            # but still performing the decoding
-            conn.output_signal = Signal(np.zeros(conn.dimensions),
-                                        name=conn.name + ".mod_output")
-            self.model.operators.append(Reset(conn.output_signal))
-        if isinstance(conn.post, nonlinearities.Neurons):
-            conn.transform *= conn.post.gain[:, np.newaxis]
->>>>>>> WIP: PES learning rule on decoders
+        
         dt = self.model.dt
 
         # Figure out the signal going across this connection
@@ -1029,7 +1016,6 @@ class Builder(object):
             if conn.filter is not None and conn.filter > dt:
                 o_coef, n_coef = self.filter_coefs(pstc=conn.filter, dt=dt)
                 conn.decoder_signal = Signal(conn._decoders * n_coef)
-<<<<<<< HEAD
             else:
                 conn.decoder_signal = Signal(conn._decoders)
                 o_coef = 0
@@ -1043,20 +1029,6 @@ class Builder(object):
         else:
             # 5. Direct connection
             conn.signal = conn.input_signal
-=======
-                self.model.operators.append(
-                    ProdUpdate(conn.decoder_signal,
-                               conn.input_signal,
-                               Signal(o_coef),
-                               conn.signal))
-            else:
-                conn.decoder_signal = Signal(conn._decoders)
-                self.model.operators.append(
-                    ProdUpdate(conn.decoder_signal,
-                               conn.input_signal,
-                               Signal(0),
-                               conn.signal))
->>>>>>> WIP: PES learning rule on decoders
 
         # Set up transform
         conn.transform = np.asarray(conn.transform, dtype=np.float64)
@@ -1066,6 +1038,8 @@ class Builder(object):
             # Make a new signal, effectively detaching from post
             conn.output_signal = Signal(np.zeros(conn.output_signal.size),
                                         name=conn.label + ".mod_output")
+            self.model.operators.append(Reset(conn.output_signal))
+
         self.model.operators.append(
             DotInc(
                 Signal(conn.transform), conn.signal, conn.output_signal,
@@ -1128,25 +1102,17 @@ class Builder(object):
         self.build_neurons(lif)
         lif.voltage = Signal(np.zeros(lif.n_neurons))
         lif.refractory_time = Signal(np.zeros(lif.n_neurons))
-<<<<<<< HEAD
         self.model.operators.append(
             SimLIF(output=lif.output_signal,
                    J=lif.input_signal,
                    nl=lif,
                    voltage=lif.voltage,
                    refractory_time=lif.refractory_time))
-=======
-        self.model.operators.append(SimLIF(output=lif.output_signal,
-                                           J=lif.input_signal,
-                                           nl=lif,
-                                           voltage=lif.voltage,
-                                           refractory_time=lif.refractory_time))
 
-    @builds(nonlinearities.PES)
+    @builds(nengo.nonlinearities.PES)
     def build_pes(self, pes):
         self.model.operators.append(
             SimPES(output=pes.connection.decoder_signal,
                    error=pes.error_connection.output_signal,
                    activities=pes.connection.pre.neurons.output_signal,
                    learning_rate=pes.learning_rate))
->>>>>>> WIP: PES learning rule on decoders

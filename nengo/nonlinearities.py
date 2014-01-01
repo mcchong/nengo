@@ -4,6 +4,7 @@ import logging
 import numpy as np
 
 from . import decoders
+from . import objects
 
 logger = logging.getLogger(__name__)
 
@@ -259,6 +260,5 @@ class PES(LearningRule):
     def connection(self, connection):
         if self._connection is not None:
             raise ValueError("Connection is already set and cannot be changed.")
-        self.error_connection = self.error.connect_to(
-            connection.post, modulatory=True)
+        self.error_connection = objects.Connection(self.error, connection.post, modulatory=True)
         self._connection = connection
