@@ -1,3 +1,5 @@
+"""Tests for nengo.builder"""
+
 import numpy as np
 import pytest
 
@@ -10,6 +12,7 @@ connection_attrs = ('filter', 'transform')
 
 
 def compare(orig, copy):
+    """Compare some nengo object before and after build."""
     if isinstance(orig, nengo.Node):
         attrs = node_attrs
     elif isinstance(orig, nengo.Ensemble):
@@ -24,6 +27,7 @@ def compare(orig, copy):
 
 
 def mybuilder(model, dt):
+    """Mostly a stub builder so that we can predetermine operators."""
     model.dt = dt
     model.seed = 0
     if not hasattr(model, 'probes'):
@@ -32,67 +36,61 @@ def mybuilder(model, dt):
 
 
 def test_pyfunc():
-    """Test Python Function nonlinearity"""
-    dt = 0.001
-    d = 3
+    """Test PythonFunction nonlinearity"""
+    dims = 3
     n_steps = 3
     n_trials = 3
 
     rng = np.random.RandomState(seed=987)
 
-    for i in range(n_trials):
-        A = rng.normal(size=(d, d))
-        fn = lambda t, x: np.cos(np.dot(A, x))
-
-        x = np.random.normal(size=d)
+    for _ in range(n_trials):
+        activities = rng.normal(size=(dims, dims))
+        func = lambda t, x: np.cos(np.dot(activities, x))
+        x = np.random.normal(size=dims)
 
         m = nengo.Model("")
         ins = nengo.builder.Signal(x, name='ins')
-        pop = nengo.builder.PythonFunction(fn=fn, n_in=d, n_out=d)
+        pop = nengo.builder.PythonFunction(fn=func, n_in=dims, n_out=dims)
         m.operators = []
-        b = nengo.builder.Builder()
-        b.model = m
-        b.build_pyfunc(pop)
+        builder = nengo.builder.Builder()
+        builder.model = m
+        builder.build_pyfunc(pop)
         m.operators += [
             nengo.builder.DotInc(
-                nengo.builder.Signal(np.eye(d)), ins, pop.input_signal),
-            nengo.builder.ProdUpdate(nengo.builder.Signal(np.eye(d)),
+                nengo.builder.Signal(np.eye(dims)), ins, pop.input_signal),
+            nengo.builder.ProdUpdate(nengo.builder.Signal(np.eye(dims)),
                                      pop.output_signal,
                                      nengo.builder.Signal(0),
                                      ins)
         ]
 
-        sim = nengo.Simulator(m, dt=dt, builder=mybuilder)
+        sim = nengo.Simulator(m, builder=mybuilder)
 
-        p0 = np.zeros(d)
-        s0 = np.array(x)
-        for j in range(n_steps):
-            tmp = p0
-            p0 = fn(0, s0)
-            s0 = tmp
+        pop0 = np.zeros(dims)
+        x = np.array(x)
+        for _ in range(n_steps):
+            tmp = pop0
+            pop0 = func(0, x)
+            x = tmp
             sim.step()
-            assert np.allclose(s0, sim.signals[ins])
-            assert np.allclose(p0, sim.signals[pop.output_signal])
+            assert np.allclose(x, sim.signals[ins])
+            assert np.allclose(pop0, sim.signals[pop.output_signal])
 
 
 def test_build():
+    """Ensure build process doesn't modify objects."""
     m = nengo.Model('test_build', seed=123)
-    input = nengo.Node(output=1)
-    A = nengo.Ensemble(nengo.LIF(40), 1)
-    B = nengo.Ensemble(nengo.LIF(20), 1)
-    nengo.Connection(input, A)
-    nengo.Connection(A, B, function=lambda x: x ** 2)
-    # input_p = nengo.Probe(input, 'output')
-    # A_p = nengo.Probe(A, 'decoded_output', filter=0.01)
-    # B_p = nengo.Probe(B, 'decoded_output', filter=0.01)
-
+    inp = nengo.Node(output=1)
+    pre = nengo.Ensemble(nengo.LIF(40), 1)
+    post = nengo.Ensemble(nengo.LIF(20), 1)
+    nengo.Connection(inp, pre)
+    nengo.Connection(pre, post, function=lambda x: x ** 2)
     mcopy = nengo.Simulator(m).model
     assert [o.label for o in m.objs] == [o.label for o in mcopy.objs]
-
-    for o, copy_o in zip(m.objs, mcopy.objs):
-        compare(o, copy_o)
-    for c, copy_c in zip(m.connections, mcopy.connections):
-        compare(c, copy_c)
+    for obj, copy_o in zip(m.objs, mcopy.objs):
+        compare(obj, copy_o)
+    for conn, copy_c in zip(m.connections, mcopy.connections):
+        compare(conn, copy_c)
 
 
 if __name__ == "__main__":

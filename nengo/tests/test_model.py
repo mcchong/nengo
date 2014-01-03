@@ -1,3 +1,5 @@
+"""Tests for nengo.model.Model"""
+
 import numpy as np
 import pytest
 
@@ -7,52 +9,53 @@ import nengo
 def test_seeding():
     """Test that setting the model seed fixes everything"""
 
-    ### TODO: this really just checks random parameters in ensembles.
-    ###   Are there other objects with random parameters that should be
-    ###   tested? (Perhaps initial weights of learned connections)
+    # TODO: this really just checks random parameters in ensembles.
+    #   Are there other objects with random parameters that should be
+    #   tested? (Perhaps initial weights of learned connections)
 
     m = nengo.Model('test_seeding')
-    input = nengo.Node(output=1, label='input')
-    A = nengo.Ensemble(nengo.LIF(40), 1, label='A')
-    B = nengo.Ensemble(nengo.LIF(20), 1, label='B')
-    nengo.Connection(input, A)
-    nengo.Connection(A, B, function=lambda x: x ** 2)
-    # input_p = nengo.Probe(input, 'output')
-    # A_p = nengo.Probe(A, 'decoded_output', filter=0.01)
-    # B_p = nengo.Probe(B, 'decoded_output', filter=0.01)
+    inp = nengo.Node(output=1, label='input')
+    pre = nengo.Ensemble(nengo.LIF(40), 1, label='A')
+    post = nengo.Ensemble(nengo.LIF(20), 1, label='B')
+    nengo.Connection(inp, pre)
+    nengo.Connection(pre, post, function=lambda x: x ** 2)
 
     m.seed = 872
-    m1 = nengo.Simulator(m).model
-    m2 = nengo.Simulator(m).model
+    md1 = nengo.Simulator(m).model
+    md2 = nengo.Simulator(m).model
     m.seed = 873
-    m3 = nengo.Simulator(m).model
+    md3 = nengo.Simulator(m).model
 
     def compare_objs(obj1, obj2, attrs, equal=True):
+        """Compare the passed attributes of the two passed objects"""
         for attr in attrs:
             check = (np.all(getattr(obj1, attr) == getattr(obj2, attr))
                      if equal else
                      np.any(getattr(obj1, attr) != getattr(obj2, attr)))
             if not check:
-                print(getattr(obj1, attr))
-                print(getattr(obj2, attr))
+                print(getattr(obj1, attr))  # pylint:disable=superfluous-parens
+                print(getattr(obj2, attr))  # pylint:disable=superfluous-parens
             assert check
 
     ens_attrs = ('encoders', 'max_rates', 'intercepts')
-    A = [[o for o in mi.objs if o.label == 'A'][0] for mi in [m1, m2, m3]]
-    B = [[o for o in mi.objs if o.label == 'B'][0] for mi in [m1, m2, m3]]
-    compare_objs(A[0], A[1], ens_attrs)
-    compare_objs(B[0], B[1], ens_attrs)
-    compare_objs(A[0], A[2], ens_attrs, equal=False)
-    compare_objs(B[0], B[2], ens_attrs, equal=False)
+    pre = [next(o for o in mi.objs if o.label == 'A')
+           for mi in [md1, md2, md3]]
+    post = [next(o for o in mi.objs if o.label == 'B')
+            for mi in [md1, md2, md3]]
+    compare_objs(pre[0], pre[1], ens_attrs)
+    compare_objs(post[0], post[1], ens_attrs)
+    compare_objs(pre[0], pre[2], ens_attrs, equal=False)
+    compare_objs(post[0], post[2], ens_attrs, equal=False)
 
     neur_attrs = ('gain', 'bias')
-    compare_objs(A[0].neurons, A[1].neurons, neur_attrs)
-    compare_objs(B[0].neurons, B[1].neurons, neur_attrs)
-    compare_objs(A[0].neurons, A[2].neurons, neur_attrs, equal=False)
-    compare_objs(B[0].neurons, B[2].neurons, neur_attrs, equal=False)
+    compare_objs(pre[0].neurons, pre[1].neurons, neur_attrs)
+    compare_objs(post[0].neurons, post[1].neurons, neur_attrs)
+    compare_objs(pre[0].neurons, pre[2].neurons, neur_attrs, equal=False)
+    compare_objs(post[0].neurons, post[2].neurons, neur_attrs, equal=False)
 
 
 def test_time(Simulator):
+    """Ensure time flows one dt at a time"""
     m = nengo.Model('test_time', seed=123)
     sim = Simulator(m)
     sim.run(0.003)

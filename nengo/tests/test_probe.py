@@ -1,3 +1,5 @@
+"""Tests for nengo.objects.Probe"""
+
 import logging
 import time
 
@@ -19,60 +21,53 @@ def test_multirun(Simulator):
     model = nengo.Model("Multi-run")
 
     sim = Simulator(model)
-    dt = sim.model.dt
-
-    # t_stops = [0.123, 0.283, 0.821, 0.921]
-    t_stops = dt * rng.randint(low=100, high=2000, size=10)
+    t_stops = sim.model.dt * rng.randint(low=100, high=2000, size=10)
 
     t_sum = 0
-    for ti in t_stops:
-        sim.run(ti)
+    for t_stop in t_stops:
+        sim.run(t_stop)
         sim_t = sim.trange()
-        t = dt * np.arange(len(sim_t))
+        t = sim.model.dt * np.arange(len(sim_t))
         assert np.allclose(sim_t, t, rtol=rtol)
 
-        t_sum += ti
-        assert np.allclose(sim_t[-1], t_sum - dt, rtol=rtol)
+        t_sum += t_stop
+        assert np.allclose(sim_t[-1], t_sum - sim.model.dt, rtol=rtol)
 
 
 def test_dts(Simulator):
-    """Test probes with different sampling times."""
+    """Test probes with different timesteps"""
 
-    n = 10
-
+    n_probes = 10
     rng = np.random.RandomState(48392)
-    dts = 0.001 * rng.randint(low=1, high=100, size=n)
-    # dts = 0.001 * np.hstack([2, rng.randint(low=1, high=100, size=n-1)])
+    dts = 0.001 * rng.randint(low=1, high=100, size=n_probes)
 
     def input_fn(t):
+        """Just returns range(1, 10)"""
+        _ = t
         return list(range(1, 10))
 
     model = nengo.Model('test_probe_dts', seed=2891)
-
     probes = []
     for i, dt in enumerate(dts):
-        xi = nengo.Node(label='x%d' % i, output=input_fn)
-        p = nengo.Probe(xi, 'output', sample_every=dt)
-        probes.append(p)
+        node_i = nengo.Node(label='x%d' % i, output=input_fn)
+        probes.append(nengo.Probe(node_i, 'output', sample_every=dt))
 
     sim = Simulator(model)
     simtime = 2.483
     # simtime = 2.484
-    dt = sim.model.dt
 
     timer = time.time()
     sim.run(simtime)
     timer = time.time() - timer
-    logger.debug(
-        "Ran %(n)s probes for %(simtime)s sec simtime in %(timer)0.3f sec"
-        % locals())
+    logger.debug("Ran %d probes for %f sec simtime in %0.3f sec",
+                 n_probes, simtime, timer)
 
-    for i, p in enumerate(probes):
-        t = dt * np.arange(int(np.ceil(simtime / dts[i])))
-        x = np.asarray(list(map(input_fn, t)))
-        y = sim.data(p)
-        assert len(x) == len(y)
-        assert np.allclose(y[1:], x[:-1])  # 1-step delay
+    for i, probe in enumerate(probes):
+        t = sim.model.dt * np.arange(int(np.ceil(simtime / dts[i])))
+        x = np.asarray([input_fn(tt) for tt in t])
+        p_data = sim.data(probe)
+        assert len(x) == len(p_data)
+        assert np.allclose(p_data[1:], x[:-1])  # 1-step delay
 
 
 def test_large(Simulator):

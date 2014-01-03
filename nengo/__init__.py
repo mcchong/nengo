@@ -1,3 +1,12 @@
+"""Nengo creates and simulates large-scale brain models in Python.
+
+The models created in Nengo are designed to run
+on multiple simulators. The reference simulator,
+nengo.Simulator, uses NumPy for reasonably fast
+computations on many platforms.
+
+"""
+
 __copyright__ = "2013, Nengo contributors"
 __license__ = "http://www.gnu.org/licenses/gpl.html"
 
@@ -50,9 +59,12 @@ def log(debug=False, path=None):
 
 
 class ContextStack(collections.deque):
+    """A deque subclass used to keep track of Nengo's current context."""
+
     def add_to_current(self, obj):
+        """Adds the passed object to the current context (model or network)."""
         try:
-            curr = self.__getitem__(-1)
+            curr = self[-1]
         except IndexError:
             raise IndexError("Context has not been set")
 
