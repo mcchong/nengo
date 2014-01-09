@@ -741,8 +741,10 @@ class Builder(object):
     signals and operators one-by-one, in the following order:
 
       1. Ensembles and Nodes
-      2. Probes
-      3. Connections
+      2. Non-probe Connections
+      3. Learning Rules
+      4. Probes
+      5. Probe Connections
 
     """
 
@@ -785,7 +787,21 @@ class Builder(object):
         for obj in self.model.objs:
             self._builders[obj.__class__](obj)
 
-        # 2. Then probes
+        # 2. Then normal connections
+        learning_rules = []
+        logger.info("Building connections")
+        for c in self.model.connections:
+            if not isinstance(c.post, nengo.Probe):
+                self._builders[c.__class__](c)
+                if c.learning_rule is not None:
+                    learning_rules.append(c.learning_rule)
+
+        # 3. Then learning rules
+        logger.info("Building learning rules")
+        for l in learning_rules:
+            self._builders[l.__class__](l)
+
+        # 4. Then probes
         logger.info("Building probes")
         for target, copytarget in zip(model.probed, self.model.probed):
             if not isinstance(self.model.probed[copytarget], SimulatorProbe):
@@ -793,25 +809,11 @@ class Builder(object):
                 self.model.probemap[model.probed[target]] = self.model.probed[
                     copytarget].probe
 
-        # 3. Then connections
-        logger.info("Building connections")
-        learning_rules = []
-
-#        for o in self.model.objs:
-#            for c in o.connections_out:
-#                self._builders[c.__class__](c)
-#                if c.learning_rule is not None:
-#                    learning_rules.append(c.learning_rule)
-
+        # 5. Then probe connections
+        logger.info("Building probe connections")
         for c in self.model.connections:
-            self._builders[c.__class__](c)
-            if c.learning_rule is not None:
-                learning_rules.append(c.learning_rule)
-
-        # 4. Finally, learning rules
-        logger.info("Building learning rules")
-        for l in learning_rules:
-            self._builders[l.__class__](l)
+            if isinstance(c.post, nengo.Probe):
+                self._builders[c.__class__](c)
 
         return self.model
 
