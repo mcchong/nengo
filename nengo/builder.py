@@ -981,9 +981,9 @@ class Builder(object):
     def build_connection(self, conn):
         rng = np.random.RandomState(self.model._get_new_seed())
 
-        conn.input_signal = conn.pre.output_signal
-        conn.output_signal = conn.post.input_signal
-        
+        conn.input_signal = getattr(conn.pre, conn.pre_attr)
+        conn.output_signal = getattr(conn.post, conn.post_attr)
+
         dt = self.model.dt
 
         # Figure out the signal going across this connection

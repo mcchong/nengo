@@ -177,7 +177,7 @@ class Ensemble(object):
             Connection(self.neurons, probe, filter=probe.filter,
                        transform=np.eye(self.n_neurons))
         elif probe.attr == 'voltages':
-            Connection(self.neurons.voltage, probe, filter=None)
+            Connection(self.neurons, probe, pre_attr='voltage', filter=None)
         else:
             raise NotImplementedError(
                 "Probe target '%s' is not probable" % probe.attr)
@@ -268,6 +268,8 @@ class Connection(object):
     name
     pre
     post
+    pre_attr
+    post_attr
 
     filter : type
         description
@@ -278,11 +280,16 @@ class Connection(object):
 
     """
 
-    def __init__(self, pre, post,
+    def __init__(self, pre, post, pre_attr='output_signal', post_attr='input_signal',
                  filter=0.005, transform=1.0, modulatory=False, **kwargs):
         self.pre = pre
         self.post = post
-        self.probes = {'signal': []}
+
+        self.pre_attr = pre_attr
+        self.post_attr = post_attr
+
+        self.probes = {'signal': [],
+                       }
 
         self.filter = filter
         self.transform = transform
