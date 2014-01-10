@@ -759,6 +759,55 @@ class SimBCM(Operator):
             transform[...] += delta
         return step
 
+class SimOJA(Operator):
+    """
+    Change the transform according to the OJA rule
+    """
+    def __init__(self, transform, delta,
+                 pre_filtered, post_filtered, oja, learning_rate,
+                 ):
+        self.transform = transform
+        self.delta = delta
+        self.post_filtered = post_filtered
+        self.pre_filtered = pre_filtered
+        self.oja = oja
+        self.learning_rate = learning_rate
+
+        self.reads = [pre_filtered, post_filtered]
+        self.updates = [transform, delta, oja]
+        self.sets = []
+        self.incs = []
+
+    def init_sigdict(self, sigdict, dt):
+        Operator.init_sigdict(self, sigdict, dt)
+        sigdict[self.delta] = np.zeros(
+                self.delta.shape,
+                dtype=self.delta.dtype)
+        sigdict[self.oja] = np.zeros(
+                self.oja.shape,
+                dtype=self.oja.dtype)
+
+    def make_step(self, dct, dt):
+        transform = dct[self.transform]
+        delta = dct[self.delta]
+        pre_filtered = dct[self.pre_filtered]
+        post_filtered = dct[self.post_filtered]
+        oja = dct[self.oja]
+        learning_rate = self.learning_rate
+
+        import q
+        def step():
+            post_squared = learning_rate * post_filtered * post_filtered
+            for i in range(len(post_squared)):
+                oja[i, :] = transform[i,:] * post_squared[i]
+
+            delta[...] = learning_rate * \
+                          np.outer(post_filtered,
+                                   pre_filtered,
+                                   )
+            transform[...] += delta - 10 * oja
+        return step
+
 def builds(cls):
     """A decorator that adds a _builds attribute to a function,
     denoting that that function is used to build
@@ -1184,4 +1233,29 @@ class Builder(object):
                    post_filtered=bcm.post_filtered,
                    theta=bcm.theta,
                    learning_rate=bcm.learning_rate,
+                   ))
+
+    @builds(nengo.nonlinearities.OJA)
+    def build_oja(self, oja):
+        pre_activities=oja.connection.pre.output_signal
+        post_activities=oja.connection.post.output_signal
+
+        oja.pre_filtered = self._filtered_signal(pre_activities, oja.pre_tau)
+        oja.post_filtered = self._filtered_signal(post_activities, oja.post_tau)
+
+        oja.delta = np.zeros((oja.connection.post.n_neurons,
+                              oja.connection.pre.n_neurons))
+        oja.delta = Signal(oja.delta, name='delta')
+
+        oja.oja = np.zeros((oja.connection.post.n_neurons,
+                              oja.connection.pre.n_neurons))
+        oja.oja = Signal(oja.oja, name='oja')
+
+        self.model.operators.append(
+            SimOJA(transform=oja.connection.transform,
+                   delta=oja.delta,
+                   pre_filtered=oja.pre_filtered,
+                   post_filtered=oja.post_filtered,
+                   oja=oja.oja,
+                   learning_rate=oja.learning_rate,
                    ))
