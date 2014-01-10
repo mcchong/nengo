@@ -732,7 +732,7 @@ class SimBCM(Operator):
         self.learning_rate = learning_rate
 
         self.reads = [theta, pre_filtered, post_filtered]
-        self.updates = [transform, delta] 
+        self.updates = [transform, delta]
         self.sets = []
         self.incs = []
 
@@ -1132,11 +1132,11 @@ class Builder(object):
                                         name=conn.label + ".mod_output")
             self.model.operators.append(Reset(conn.output_signal))
 
-        conn.transform = Signal(conn.transform)
+        conn.transform_signal = Signal(conn.transform)
 
         self.model.operators.append(
             DotInc(
-                conn.transform, conn.signal, conn.output_signal,
+                conn.transform_signal, conn.signal, conn.output_signal,
                 tag=str(conn)))
 
         # Set up probes
@@ -1227,7 +1227,7 @@ class Builder(object):
         bcm.theta = self._filtered_signal(bcm.post_filtered, bcm.tau)
 
         self.model.operators.append(
-            SimBCM(transform=bcm.connection.transform,
+            SimBCM(transform=bcm.connection.transform_signal,
                    delta=bcm.delta,
                    pre_filtered=bcm.pre_filtered,
                    post_filtered=bcm.post_filtered,
@@ -1252,7 +1252,7 @@ class Builder(object):
         oja.oja = Signal(oja.oja, name='oja')
 
         self.model.operators.append(
-            SimOJA(transform=oja.connection.transform,
+            SimOJA(transform=oja.connection.transform_signal,
                    delta=oja.delta,
                    pre_filtered=oja.pre_filtered,
                    post_filtered=oja.post_filtered,
