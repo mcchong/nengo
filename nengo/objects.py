@@ -289,6 +289,7 @@ class Connection(object):
         self.post_attr = post_attr
 
         self.probes = {'signal': [],
+                       'transform': [],
                        }
 
         self.filter = filter
@@ -332,6 +333,33 @@ class Connection(object):
         if _learning_rule is not None:
             _learning_rule.connection = self
         self._learning_rule = _learning_rule
+
+    def probe(self, probe):
+        """Probe a signal in this connection.
+
+        Parameters
+        ----------
+        to_probe : {'signal'}, optional
+            The signal to probe.
+        sample_every : float, optional
+            The sampling period, in seconds.
+        filter : float, optional
+            The low-pass filter time constant of the probe, in seconds.
+
+        Returns
+        -------
+        probe : Probe
+            The new Probe object.
+        """
+        self.probes[probe.attr].append(probe)
+
+        if probe.attr == 'transform':
+            Connection(self, probe, pre_attr='transform', filter=probe.filter,
+                       transform=np.eye(transform_shape[0]))
+        else:
+            raise NotImplementedError(
+                "Probe target '%s' is not probable" % probe.attr)
+        return probe
 
     def add_to_model(self, model):
         model.connections.append(self)

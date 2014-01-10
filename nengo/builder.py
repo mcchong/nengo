@@ -1042,15 +1042,18 @@ class Builder(object):
                                         name=conn.label + ".mod_output")
             self.model.operators.append(Reset(conn.output_signal))
 
+        conn.transform = Signal(conn.transform)
+
         self.model.operators.append(
             DotInc(
-                Signal(conn.transform), conn.signal, conn.output_signal,
+                conn.transform, conn.signal, conn.output_signal,
                 tag=str(conn)))
 
         # Set up probes
         for probe in conn.probes['signal']:
             probe.dimensions = conn.output_signal.size
-            self.model.add(probe)
+        for probe in conn.probes['transform']:
+            probe.dimensions = conn.transform.size
 
     @builds(nengo.PythonFunction)
     def build_pyfunc(self, pyfn):
