@@ -717,6 +717,47 @@ class SimPES(Operator):
             output[...] += learning_rate * np.outer(error, activities) * dt
         return step
 
+class SimBCM(Operator):
+    """
+    Change the transform according to the BCM rule 
+    """
+    def __init__(self, transform, delta,
+                 pre_filtered, post_filtered, theta, learning_rate,
+                 ):
+        self.transform = transform
+        self.delta = delta
+        self.post_filtered = post_filtered
+        self.pre_filtered = pre_filtered
+        self.theta = theta
+        self.learning_rate = learning_rate
+
+        self.reads = [theta, pre_filtered, post_filtered]
+        self.updates = [transform, delta] 
+        self.sets = []
+        self.incs = []
+
+    def init_sigdict(self, sigdict, dt):
+        Operator.init_sigdict(self, sigdict, dt)
+        sigdict[self.delta] = np.zeros(
+                self.delta.shape,
+                dtype=self.delta.dtype)
+
+    def make_step(self, dct, dt):
+        transform = dct[self.transform]
+        delta = dct[self.delta]
+        pre_filtered = dct[self.pre_filtered]
+        post_filtered = dct[self.post_filtered]
+        theta = dct[self.theta]
+        learning_rate = self.learning_rate
+
+        import q
+        def step():
+            delta[...] = learning_rate * \
+                          np.outer(post_filtered * (post_filtered - theta), 
+                                   pre_filtered, 
+                                   )
+            transform[...] += delta
+        return step
 
 def builds(cls):
     """A decorator that adds a _builds attribute to a function,
@@ -1121,3 +1162,26 @@ class Builder(object):
                    error=pes.error_connection.output_signal,
                    activities=pes.connection.pre.neurons.output_signal,
                    learning_rate=pes.learning_rate))
+
+    @builds(nengo.nonlinearities.BCM)
+    def build_bcm(self, bcm):
+        pre_activities=bcm.connection.pre.output_signal
+        post_activities=bcm.connection.post.output_signal
+
+
+        bcm.delta = np.zeros((bcm.connection.post.n_neurons,
+                              bcm.connection.pre.n_neurons))
+        bcm.delta = Signal(bcm.delta, name='delta')
+
+        bcm.pre_filtered = self._filtered_signal(pre_activities, bcm.pre_tau)
+        bcm.post_filtered = self._filtered_signal(post_activities, bcm.post_tau)
+        bcm.theta = self._filtered_signal(bcm.post_filtered, bcm.tau)
+
+        self.model.operators.append(
+            SimBCM(transform=bcm.connection.transform,
+                   delta=bcm.delta,
+                   pre_filtered=bcm.pre_filtered,
+                   post_filtered=bcm.post_filtered,
+                   theta=bcm.theta,
+                   learning_rate=bcm.learning_rate,
+                   ))

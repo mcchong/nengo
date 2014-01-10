@@ -262,3 +262,68 @@ class PES(LearningRule):
             raise ValueError("Connection is already set and cannot be changed.")
         self.error_connection = objects.Connection(self.error, connection.post, modulatory=True)
         self._connection = connection
+
+class BCM(LearningRule):
+    def __init__(self, tau, pre_tau=None, post_tau=None, learning_rate=1e-5, label=None):
+        self.tau = tau
+
+        self.pre_tau = pre_tau if pre_tau is not None else tau
+        self.post_tau = post_tau if post_tau is not None else tau
+
+        self.learning_rate = learning_rate
+
+        if label is None:
+            label = "<BCM %d>" % id(self)
+        self.label = label
+
+        self.probes = {'theta': [],
+                       'pre': [],
+                       'post': [],
+                       'delta': [],
+                      }
+
+    def probe(self, probe):
+        """Probe a signal in this learning rule.
+
+        Parameters
+        ----------
+        probe: Probe
+
+        Returns
+        -------
+        probe : Probe
+        """
+        self.probes[probe.attr].append(probe)
+
+        if probe.attr == 'theta':
+            probe.dimensions = (self.connection.post.n_neurons)
+            objects.Connection(self, probe, pre_attr='theta', filter=probe.filter,
+                               transform=np.eye(self.connection.post.n_neurons))
+        elif probe.attr == 'pre':
+            probe.dimensions = (self.connection.pre.n_neurons)
+            objects.Connection(self, probe, pre_attr='pre_filtered', filter=probe.filter,
+                               transform=np.eye(self.connection.pre.n_neurons))
+        elif probe.attr == 'post':
+            probe.dimensions = (self.connection.post.n_neurons)
+            objects.Connection(self, probe, pre_attr='post_filtered', filter=probe.filter,
+                               transform=np.eye(self.connection.post.n_neurons))
+        elif probe.attr == 'delta':
+            probe.dimensions = (self.connection.post.n_neurons,
+                                self.connection.pre.n_neurons)
+            objects.Connection(self, probe, pre_attr='delta', filter=probe.filter,
+                               transform=np.eye(self.connection.post.n_neurons))
+        else:
+            raise NotImplementedError(
+                "Probe target '%s' is not probable" % probe.attr)
+        return probe
+
+    @property
+    def connection(self):
+        return self._connection
+
+    @connection.setter
+    def connection(self, connection):
+        if self._connection is not None:
+            raise ValueError("Connection is already set and cannot be changed.")
+        self._connection = connection
+
