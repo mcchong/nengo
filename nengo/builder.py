@@ -591,6 +591,38 @@ class ProdUpdate(Operator):
             Y[...] += val
         return step
 
+class OuterUpdate(Operator):
+    """
+    Sets Y <- outer(A, X) + B * Y
+    """
+
+    def __init__(self, A, X, B, Y, tag=None):
+        self.A = A
+        self.X = X
+        self.B = B
+        self.Y = Y
+        self.tag = tag
+
+        self.reads = [self.A, self.X, self.B]
+        self.updates = [self.Y]
+        self.incs = []
+        self.sets = []
+
+    def __str__(self):
+        return 'OuterUpdate(%s, %s, %s, -> %s "%s")' % (
+            str(self.A), str(self.X), str(self.B), str(self.Y), self.tag)
+
+    def make_step(self, dct, dt):
+        X = dct[self.X]
+        A = dct[self.A]
+        Y = dct[self.Y]
+        B = dct[self.B]
+
+        def step():
+            val = np.outer(A, X)
+            Y[...] *= B
+            Y[...] += val
+        return step
 
 class SimPyFunc(Operator):
     """Set signal `output` by some non-linear function of J
@@ -1206,17 +1238,26 @@ class Builder(object):
 
     @builds(nengo.nonlinearities.PES)
     def build_pes(self, pes):
+        activities = pes.connection.pre.neurons.output_signal
+        error = pes.error_connection.output_signal
+        scaled_error = Signal(np.zeros(error.shape))
+        shaped_scaled_error = SignalView(scaled_error, (error.size,1), (1,1), 0)
+        shaped_activities = SignalView(activities, (1, activities.size), (1,1), 0)
+
+        decoders = pes.connection.decoder_signal
+        lr_signal = Signal(pes.learning_rate * 0.001)
+
         self.model.operators.append(
-            SimPES(output=pes.connection.decoder_signal,
-                   error=pes.error_connection.output_signal,
-                   activities=pes.connection.pre.neurons.output_signal,
-                   learning_rate=pes.learning_rate))
+                Reset(scaled_error))
+        self.model.operators.append(
+                DotInc(lr_signal, error, scaled_error, tag="PES: scale error"))
+        self.model.operators.append(ProdUpdate(
+            shaped_scaled_error, shaped_activities, Signal(1), decoders, tag="PES: update"))
 
     @builds(nengo.nonlinearities.BCM)
     def build_bcm(self, bcm):
         pre_activities=bcm.connection.pre.output_signal
         post_activities=bcm.connection.post.output_signal
-
 
         bcm.delta = np.zeros((bcm.connection.post.n_neurons,
                               bcm.connection.pre.n_neurons))
