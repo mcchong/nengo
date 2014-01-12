@@ -3,6 +3,11 @@ import matplotlib.pyplot as plt
 
 import nengo
 from nengo.nonlinearities import PES
+from nengo_ocl.sim_ocl import Simulator as SimOCL
+from nengo_ocl.sim_npy import Simulator as SimNumpy
+import pyopencl as cl
+
+sim_class = SimNumpy
 
 N = 30
 D = 2
@@ -36,7 +41,12 @@ pre_p = nengo.Probe(pre, 'decoded_output', filter=0.02)
 post_p = nengo.Probe(post, 'decoded_output', filter=0.02)
 error_p = nengo.Probe(error, 'decoded_output', filter=0.02)
 
-sim = nengo.Simulator(model, dt=0.001)
+if sim_class == SimOCL:
+    ctx = cl.create_some_context()
+    sim = sim_class(model, dt=0.001, context=ctx)
+else:
+    sim = sim_class(model, dt=0.001)
+
 sim.run(5)
 
 # Plot results
@@ -50,4 +60,5 @@ plt.subplot(212)
 plt.plot(t, sim.data(error_p), label='Error')
 plt.legend()
 plt.tight_layout()
-plt.savefig('learning.pdf')
+plt.show()
+#plt.savefig('learning.pdf')
