@@ -1240,19 +1240,20 @@ class Builder(object):
     def build_pes(self, pes):
         activities = pes.connection.pre.neurons.output_signal
         error = pes.error_connection.output_signal
-        scaled_error = Signal(np.zeros(error.shape))
-        shaped_scaled_error = SignalView(scaled_error, (error.size,1), (1,1), 0)
-        shaped_activities = SignalView(activities, (1, activities.size), (1,1), 0)
+        scaled_error = Signal(np.zeros(error.shape), name="PES:scaled_error")
+        shaped_scaled_error = SignalView(scaled_error, (error.size, 1), (1,1), 0, name="PES:shaped_scaled_erro")
+        shaped_activities = SignalView(activities, (1, activities.size), (1,1), 0, name="PES:shaped_activites")
 
         decoders = pes.connection.decoder_signal
-        lr_signal = Signal(pes.learning_rate * 0.001)
+        lr_signal = Signal(pes.learning_rate * 0.001, name="PES:learning_rate")
 
         self.model.operators.append(
                 Reset(scaled_error))
         self.model.operators.append(
-                DotInc(lr_signal, error, scaled_error, tag="PES: scale error"))
-        self.model.operators.append(ProdUpdate(
-            shaped_scaled_error, shaped_activities, Signal(1), decoders, tag="PES: update"))
+                DotInc(lr_signal, error, scaled_error, tag="PES:scale error"))
+        self.model.operators.append(
+                ProdUpdate(shaped_scaled_error, shaped_activities, Signal(1, name="ONE"),
+                           decoders, tag="PES:Update Decoder"))
 
     @builds(nengo.nonlinearities.BCM)
     def build_bcm(self, bcm):
