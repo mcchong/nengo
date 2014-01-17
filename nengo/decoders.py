@@ -33,14 +33,22 @@ def sample_hypersphere(dimensions, n_samples, rng, surface=False):
 
     return samples
 
-DEFAULT_RCOND = 0.01
 
+def lstsq_old(activities, targets, rng, noise_amp=0.0):
+    DEFAULT_RCOND = 0.01
+    weights, res, rank, s = np.linalg.lstsq(
+        activities, targets, rcond=DEFAULT_RCOND)
+    return weights.T
+
+def lstsq_noise(activities, targets, rng, noise_amp=0.1):
+    sigma = noise_amp * activities.max()
+    activities = activities + rng.normal(scale=sigma, size=activities.shape)
+    return _cholesky1(activities, targets, 0).T
 
 def lstsq_L2(activities, targets, rng, noise_amp=0.1):
     """Least-squares with L2 regularization."""
     sigma = noise_amp * activities.max()
     return _cholesky1(activities, targets, sigma).T
-
 
 def lstsq_L2nz(activities, targets, rng, noise_amp=0.1):
     """Least-squares with L2 regularization on non-zero components."""
@@ -56,7 +64,6 @@ def lstsq_L2nz(activities, targets, rng, noise_amp=0.1):
 
     # Solve the LS problem using the Cholesky decomposition
     return _cholesky1(activities, targets, sigma).T
-
 
 def _cholesky1(A, b, sigma):
     """Solve the given linear system(s) using the Cholesky decomposition."""

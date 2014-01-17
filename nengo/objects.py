@@ -291,7 +291,7 @@ class Connection(object):
         if isinstance(self.pre, Ensemble):
             self.decoders = kwargs.pop('decoders', None)
             self.decoder_solver = kwargs.pop(
-                'decoder_solver', nengo.decoders.lstsq_L2)
+                'decoder_solver', nengo.decoders.lstsq_L2nz)
             self.eval_points = kwargs.pop('eval_points', None)
             self.function = kwargs.pop('function', None)
 
