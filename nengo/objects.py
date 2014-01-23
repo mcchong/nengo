@@ -319,7 +319,7 @@ class Connection(object):
 
     @property
     def label(self):
-        label = self.pre.label + ">" + self.post.label
+        label = self.pre.label + " -> " + self.post.label
         if hasattr(self, 'function') and self.function is not None:
             return label + ":" + self.function.__name__
         return label
