@@ -354,8 +354,7 @@ class Connection(object):
         self.probes[probe.attr].append(probe)
 
         if probe.attr == 'transform':
-            Connection(self, probe, pre_attr='transform', filter=probe.filter,
-                       transform=np.eye(transform_shape[0]))
+            Connection(self, probe, pre_attr='transform_signal', filter=probe.filter)
         else:
             raise NotImplementedError(
                 "Probe target '%s' is not probable" % probe.attr)
