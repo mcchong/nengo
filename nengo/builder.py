@@ -798,6 +798,7 @@ class SimOJA(Operator):
     """
     def __init__(self, transform, delta,
                  pre_filtered, post_filtered, oja, learning_rate,
+                 oja_scale,
                  ):
         self.transform = transform
         self.delta = delta
@@ -805,6 +806,7 @@ class SimOJA(Operator):
         self.pre_filtered = pre_filtered
         self.oja = oja
         self.learning_rate = learning_rate
+        self.oja_scale = oja_scale
 
         self.reads = [pre_filtered, post_filtered]
         self.updates = [transform, delta, oja]
@@ -827,6 +829,7 @@ class SimOJA(Operator):
         post_filtered = dct[self.post_filtered]
         oja = dct[self.oja]
         learning_rate = self.learning_rate
+        oja_scale = self.oja_scale
 
         import q
         def step():
@@ -838,7 +841,7 @@ class SimOJA(Operator):
                           np.outer(post_filtered,
                                    pre_filtered,
                                    )
-            transform[...] += delta - 10 * oja
+            transform[...] += delta - oja_scale  * oja
         return step
 
 def builds(cls):
@@ -1156,7 +1159,7 @@ class Builder(object):
             conn.signal = conn.input_signal
 
         # Set up transform
-        conn.transform = np.asarray(conn.transform, dtype=np.float64)
+        conn.transform = np.array(conn.transform, dtype=np.float64)
         if isinstance(conn.post, nengo.nonlinearities.Neurons):
             conn.transform *= conn.post.gain[:, np.newaxis]
         if conn.modulatory:
@@ -1301,4 +1304,5 @@ class Builder(object):
                    post_filtered=oja.post_filtered,
                    oja=oja.oja,
                    learning_rate=oja.learning_rate,
+                   oja_scale=oja.oja_scale,
                    ))
