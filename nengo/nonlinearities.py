@@ -328,13 +328,14 @@ class BCM(LearningRule):
         self._connection = connection
 
 class OJA(LearningRule):
-    def __init__(self, pre_tau=0.005, post_tau=0.005, learning_rate=1e-5, oja_scale=1.0, label=None):
+    def __init__(self, pre_tau=0.005, post_tau=0.005, learning_rate=1e-5, oja_scale=1.0, end_time=None, label=None):
 
         self.pre_tau = pre_tau
         self.post_tau = post_tau
 
         self.learning_rate = learning_rate
         self.oja_scale = oja_scale
+        self.end_time = end_time
 
         if label is None:
             label = "<OJA %d>" % id(self)
