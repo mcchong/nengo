@@ -333,9 +333,10 @@ class Signal(SignalView):
 class SimulatorProbe(object):
     """A model probe to record a signal"""
 
-    def __init__(self, sig, dt):
+    def __init__(self, sig, dt, slices):
         self.sig = sig
         self.dt = dt
+        self.slices = slices
 
     def __str__(self):
         return "Probing " + str(self.sig)
@@ -1074,7 +1075,7 @@ class Builder(object):
         self.model.operators.append(Reset(probe.input_signal))
 
         # Set up probe
-        probe.probe = SimulatorProbe(probe.input_signal, probe.sample_every)
+        probe.probe = SimulatorProbe(probe.input_signal, probe.sample_every, probe.slices)
         self.model.probes.append(probe.probe)
 
     @staticmethod
@@ -1175,7 +1176,7 @@ class Builder(object):
         for probe in conn.probes['signal']:
             probe.dimensions = conn.output_signal.size
         for probe in conn.probes['transform']:
-            probe.dimensions = conn.transform.size
+            probe.dimensions = conn.transform.shape
 
     @builds(nengo.PythonFunction)
     def build_pyfunc(self, pyfn):

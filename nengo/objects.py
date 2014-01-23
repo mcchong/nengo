@@ -435,13 +435,15 @@ class Probe(object):
     """
 
     def __init__(self, target, attr,
-                 sample_every=0.001, filter=None, dimensions=None):
+                 sample_every=0.001, filter=None, dimensions=None,
+                 slices=None):
         self.target = target
         self.attr = attr
         self.label = "Probe(" + target.label + "." + attr + ")"
         self.sample_every = sample_every
         self.dimensions = dimensions  # None?
         self.filter = filter
+        self.slices = slices
 
         target.probe(self)
 

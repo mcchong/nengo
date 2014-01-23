@@ -246,7 +246,12 @@ class Simulator(object):
         for probe in self.model.probes:
             period = int(probe.dt / self.model.dt)
             if self.n_steps % period == 0:
-                tmp = self._sigdict[probe.sig].copy()
+
+                if probe.slices:
+                    tmp = self._sigdict[probe.sig][probe.slices].copy()
+                else:
+                    tmp = self._sigdict[probe.sig].copy()
+
                 self.probe_outputs[probe].append(tmp)
 
         self._sigdict['__time__'] += self.model.dt
