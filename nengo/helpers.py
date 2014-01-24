@@ -7,11 +7,13 @@ except ImportError:
 import numpy as np
 
 
-def tuning_curves(sim_ens):
-    eval_points = np.array(sim_ens.eval_points)
-    eval_points.sort(axis=0)
-    activities = sim_ens.activities(eval_points)
-    return eval_points, activities
+# TODO: Fix this function. Or, make it a probeable.
+
+# def tuning_curves(sim_ens):
+#     eval_points = np.array(sim_ens.eval_points)
+#     eval_points.sort(axis=0)
+#     activities = sim_ens.activities(eval_points)  # XXX bias?
+#     return eval_points, activities
 
 
 def piecewise(data):
