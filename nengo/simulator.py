@@ -271,6 +271,11 @@ class Simulator(object):
                 logger.debug("Step %d", i)
             self.step()
 
+    def reset(self):
+        self._sigdict['__time__'][...] = 0.0
+        self.n_steps = 0
+        self.probe_outputs = dict((probe, []) for probe in self.model.probes)
+
     def trange(self, dt=None):
         dt = self.model.dt if dt is None else dt
         last_t = self._sigdict['__time__'] - self.model.dt
