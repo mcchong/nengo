@@ -798,7 +798,7 @@ class SimOJA(Operator):
     """
     def __init__(self, transform, delta,
                  pre_filtered, post_filtered, oja, learning_rate,
-                 oja_scale, end_time
+                 oja_scale, learn, end_time
                  ):
         self.transform = transform
         self.delta = delta
@@ -807,6 +807,7 @@ class SimOJA(Operator):
         self.oja = oja
         self.learning_rate = learning_rate
         self.oja_scale = oja_scale
+        self.learn = learn
         self.end_time = end_time
 
         self.reads = [pre_filtered, post_filtered]
@@ -831,13 +832,21 @@ class SimOJA(Operator):
         oja = dct[self.oja]
         learning_rate = self.learning_rate
         oja_scale = self.oja_scale
+
         end_time = self.end_time
         if end_time is None:
             end_time = float("inf")
+
+        learn = self.learn
+        if learn is None:
+            learn = lambda x: True
         t = dct['__time__']
 
         import q
         def step():
+            if not learn(0):
+                return
+
             if t > end_time:
                 return
 
@@ -1313,5 +1322,6 @@ class Builder(object):
                    oja=oja.oja,
                    learning_rate=oja.learning_rate,
                    oja_scale=oja.oja_scale,
+                   learn=oja.learn,
                    end_time=oja.end_time
                    ))
