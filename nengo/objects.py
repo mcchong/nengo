@@ -5,7 +5,7 @@ import numpy as np
 
 import nengo
 import nengo.decoders
-from nengo.nonlinearities import Neurons
+from nengo.neurons import Neurons
 
 logger = logging.getLogger(__name__)
 
